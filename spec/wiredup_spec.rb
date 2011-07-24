@@ -63,7 +63,7 @@ describe Circuit do
       end
     end
 
-    describe "containing wire conntected to a gate and a bulb" do
+    describe "containing wire connected to a gate and a bulb" do
       before :each do
         @circuit.parse_line " A-----@   "
         @wire = @circuit.wires.values[0]
@@ -71,6 +71,10 @@ describe Circuit do
 
       it "should have a bulb output" do
         @wire.output.should be_a Bulb
+      end
+
+      it "should set the wire as the bulb input" do
+        @circuit.bulb.input.should equal(@wire)
       end
     end
 
@@ -118,6 +122,63 @@ describe Circuit do
       end
     end
   end
+
+  describe "when a wire spans multiple lines" do
+    before :each do
+      @circuit.parse_line " 1----|  "
+      @circuit.parse_line "      |  "
+      @circuit.parse_line "      A-@"
+      @wire = @circuit.wires.values[0]
+    end
+
+    it "should identify the input" do
+      @wire.input.should be_a Switch
+    end
+    
+    it "should identify the output" do
+      @wire.output.should be_a AndGate
+    end
+  end
+
+  describe "when a gate has two input wires" do
+    before :each do
+      @circuit.parse_line " 1----|  "
+      @circuit.parse_line "      |  "
+      @circuit.parse_line "      O-@"
+      @circuit.parse_line "      |  "
+      @circuit.parse_line "      |  "
+      @circuit.parse_line " 0----|  "
+      @top_wire = @circuit.wires["0-1"]
+      @bottom_wire = @circuit.wires["5-1"]
+    end
+
+    it "should set the output on both wires" do
+      @top_wire.output.should be_a OrGate
+      @bottom_wire.output.should be_a OrGate
+    end
+  end
+
+  describe "when a not gate connects two wires" do
+    before :each do
+      @circuit.parse_line " 1----|  "
+      @circuit.parse_line "      |  "
+      @circuit.parse_line "      N-@"
+      @in_wire = @circuit.wires["0-1"]
+      @out_wire = @circuit.wires["2-6"]
+    end
+
+    it "should set the output of the first to a NotGate" do
+      @in_wire.output.should be_a NotGate
+    end
+
+    it "should set the input of the second to a NotGate" do
+      @in_wire.output.should be_a NotGate
+    end
+
+    it "should set the ouput of first wire to the input of the second" do
+      @out_wire.input.should equal(@in_wire.output)
+    end
+  end
 end
 
 describe Bulb do
@@ -155,5 +216,67 @@ describe Wire do
     @wire.input.value = true
     @wire.value.should be_true
   end
+
+  it "should describe its location with to_s" do
+    @wire.to_s.should == "Wire[2 3-7]"
+  end
 end
 
+describe AndGate do
+  [ [false, false, false],
+    [false, true, false],
+    [true, false, false],
+    [true, true, true] ].each do |run|
+
+    it "should be #{run[2]} if input1=#{run[0]} and input2=#{run[1]}" do
+      gate = AndGate.new
+      gate.input1 = OpenStruct.new :value => run[0]
+      gate.input2 = OpenStruct.new :value => run[1]
+      gate.value.should == run[2]
+    end
+  end
+end
+
+describe OrGate do
+  [ [false, false, false],
+    [false, true, true],
+    [true, false, true],
+    [true, true, true] ].each do |run|
+
+    it "should be #{run[2]} if input1=#{run[0]} and input2=#{run[1]}" do
+      gate = OrGate.new
+      gate.input1 = OpenStruct.new :value => run[0]
+      gate.input2 = OpenStruct.new :value => run[1]
+      gate.value.should == run[2]
+    end
+  end
+end
+
+describe XorGate do
+  [ [false, false, false],
+    [false, true, true],
+    [true, false, true],
+    [true, true, false] ].each do |run|
+
+    it "should be #{run[2]} if input1=#{run[0]} and input2=#{run[1]}" do
+      gate = XorGate.new
+      gate.input1 = OpenStruct.new :value => run[0]
+      gate.input2 = OpenStruct.new :value => run[1]
+      gate.value.should == run[2]
+    end
+  end
+end
+
+describe NotGate do
+  it "should be true if the input is false" do
+    gate = NotGate.new
+    gate.input = OpenStruct.new :value => false
+    gate.value.should be_true
+  end
+
+  it "should be false if the input is true" do
+    gate = NotGate.new
+    gate.input = OpenStruct.new :value => true
+    gate.value.should be_false
+  end
+end
