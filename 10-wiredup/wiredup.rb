@@ -169,7 +169,7 @@ end
 
 
 if $0 == __FILE__
-  circuit_file = 'broken_circuit.txt'
+  circuit_file = 'data/broken_circuit.txt'
 
   circuit = Circuit.new
   circuits = [circuit]
